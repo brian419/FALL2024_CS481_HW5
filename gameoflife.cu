@@ -2,8 +2,9 @@
 
 // going to test code on cluster as I don't have NVDIA GPU but starting with a simple addition until number 10 loop
 
-// Instructions to compile the program: nvcc -o count_to_10 count_to_10.cu
-// Instructions to run the program: ./count_to_10
+// Instructions to compile the program: nvcc -o gameoflife gameoflife.cu
+
+// Instructions to run the program: ./gameoflife
 
 #include <iostream>
 #include <cuda_runtime.h>
