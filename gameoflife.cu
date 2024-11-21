@@ -6,31 +6,113 @@
 
 // Instructions to run the program: ./gameoflife
 
-#include <iostream>
-#include <cuda_runtime.h>
 
-// kernel function to count to 10
-__global__ void count_to_ten() {
-    int thread_id = threadIdx.x; // get the thread index
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda.h>
+#include <sys/time.h>
 
-    // only let the first thread in the block count to 10
-    if (thread_id == 0) {
-        for (int i = 1; i <= 10; i++) {
-            printf("Count: %d\n", i);
+#define DIES 0
+#define ALIVE 1
+
+__global__ void compute_life(int* life, int* temp, int n, int iterations, int* flag) {
+    extern __shared__ int shared_mem[];
+    int* shared_life = &shared_mem[0];
+    int* shared_temp = &shared_mem[blockDim.x * blockDim.y];
+
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int bx = blockIdx.x * blockDim.x + tx + 1;
+    int by = blockIdx.y * blockDim.y + ty + 1;
+    int idx = by * (n + 2) + bx;
+
+    shared_life[ty * blockDim.x + tx] = life[idx];
+    __syncthreads();
+
+    for (int k = 0; k < iterations; k++) {
+        int value = 0;
+        if (tx > 0 && tx < blockDim.x - 1 && ty > 0 && ty < blockDim.y - 1) {
+            value = shared_life[(ty - 1) * blockDim.x + (tx - 1)] +
+                    shared_life[(ty - 1) * blockDim.x + tx] +
+                    shared_life[(ty - 1) * blockDim.x + (tx + 1)] +
+                    shared_life[ty * blockDim.x + (tx - 1)] +
+                    shared_life[ty * blockDim.x + (tx + 1)] +
+                    shared_life[(ty + 1) * blockDim.x + (tx - 1)] +
+                    shared_life[(ty + 1) * blockDim.x + tx] +
+                    shared_life[(ty + 1) * blockDim.x + (tx + 1)];
         }
+
+        if (shared_life[ty * blockDim.x + tx]) {
+            if (value < 2 || value > 3) {
+                shared_temp[ty * blockDim.x + tx] = DIES;
+                atomicAdd(flag, 1);
+            } else {
+                shared_temp[ty * blockDim.x + tx] = ALIVE;
+            }
+        } else {
+            if (value == 3) {
+                shared_temp[ty * blockDim.x + tx] = ALIVE;
+                atomicAdd(flag, 1);
+            } else {
+                shared_temp[ty * blockDim.x + tx] = DIES;
+            }
+        }
+        __syncthreads();
+
+        int* tmp = shared_life;
+        shared_life = shared_temp;
+        shared_temp = tmp;
+    }
+
+    life[idx] = shared_life[ty * blockDim.x + tx];
+}
+
+double gettime(void) {
+    struct timeval tval;
+    gettimeofday(&tval, NULL);
+    return (double)tval.tv_sec + (double)tval.tv_usec / 1000000.0;
+}
+
+void initialize_life(int* life, int n) {
+    for (int i = 0; i < n * n; i++) {
+        life[i] = (rand() % 2);
     }
 }
 
-int main() {
-    std::cout << "Starting the GPU count to 10 program..." << std::endl;
+int main(int argc, char** argv) {
+    int n = atoi(argv[1]);
+    int iterations = atoi(argv[2]);
+    int* h_life;
+    int* d_life, *d_temp, *d_flag;
+    int block_size = 16;
+    double start, end;
 
-    // launch the kernel with 1 block and 1 thread
-    count_to_ten<<<1, 1>>>();
+    h_life = (int*)malloc((n + 2) * (n + 2) * sizeof(int));
+    initialize_life(h_life, n);
 
-    // synchronize GPU and CPU to ensure all output is printed
+    cudaMalloc(&d_life, (n + 2) * (n + 2) * sizeof(int));
+    cudaMalloc(&d_temp, (n + 2) * (n + 2) * sizeof(int));
+    cudaMalloc(&d_flag, sizeof(int));
+
+    cudaMemcpy(d_life, h_life, (n + 2) * (n + 2) * sizeof(int), cudaMemcpyHostToDevice);
+
+    dim3 dim_block(block_size, block_size);
+    dim3 dim_grid((n + block_size - 1) / block_size, (n + block_size - 1) / block_size);
+
+    start = gettime();
+    compute_life<<<dim_grid, dim_block, 2 * block_size * block_size * sizeof(int)>>>(d_life, d_temp, n, iterations, d_flag);
     cudaDeviceSynchronize();
+    end = gettime();
 
-    std::cout << "Finished counting on GPU." << std::endl;
+    cudaMemcpy(h_life, d_life, (n + 2) * (n + 2) * sizeof(int), cudaMemcpyDeviceToHost);
+
+    printf("Time taken for %d iterations: %f seconds\n", iterations, end - start);
+
+    free(h_life);
+    cudaFree(d_life);
+    cudaFree(d_temp);
+    cudaFree(d_flag);
 
     return 0;
 }
+
