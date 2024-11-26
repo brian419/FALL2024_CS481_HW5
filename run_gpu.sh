@@ -3,8 +3,7 @@
 #PBS -l select=1:ngpus=1:ncpus=1:mpiprocs=1:mem=4gb
 #PBS -l walltime=08:00:00
 #PBS -q classgpu
-#PBS -o /scratch/ualclsd0197/output_dir/game_of_life_output.txt
-#PBS -e /scratch/ualclsd0197/output_dir/game_of_life_error.txt
+
 
 cd $PBS_O_WORKDIR
 
