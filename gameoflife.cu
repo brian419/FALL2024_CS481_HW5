@@ -256,15 +256,7 @@ int main(int argc, char **argv)
     int host_flag = 0;
     cudaMemcpy(d_flag, &host_flag, sizeof(int), cudaMemcpyHostToDevice);
 
-    // compute_life<<<dim_grid, dim_block, 2 * block_size * block_size * sizeof(int)>>>(d_life, d_temp, n, iterations, d_flag);
-    // cudaDeviceSynchronize();
-
     compute_life<<<dim_grid, dim_block, 2 * block_size * block_size * sizeof(int)>>>(d_life, d_temp, n, iterations, d_flag);
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess)
-    {
-        printf("CUDA Kernel Launch Error: %s\n", cudaGetErrorString(err));
-    }
     cudaDeviceSynchronize();
 
     end = gettime();
