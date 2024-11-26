@@ -156,6 +156,10 @@
 //     return 0;
 // }
 
+
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda.h>
@@ -244,6 +248,7 @@ double gettime(void)
 
 void initialize_life(int *life, int n)
 {
+    srand(12345);
     for (int i = 0; i < (n + 2) * (n + 2); i++)
     {
         life[i] = (rand() % 2);
