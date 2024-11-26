@@ -12,5 +12,7 @@ cd $PBS_O_WORKDIR
 module load cuda
 nvcc -o gameoflife gameoflife.cu
 
-./gameoflife 10000 10000
+# ./gameoflife 10000 10000
+nvprof ./gameoflife 10000 10000
+
 
