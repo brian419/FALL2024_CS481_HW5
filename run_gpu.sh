@@ -1,10 +1,18 @@
 #!/bin/bash
-#PBS -N gpu_query
-#PBS -l nodes=1:ppn=1:gpus=1
-#PBS -l walltime=00:05:00
-#PBS -q classgpu
-#PBS -o gpu_info.txt
-#PBS -e gpu_info_error.txt
+#PBS -N game_of_life_mpi_job
+#PBS -l nodes=1:ppn=1:gpus=1:gpu_type
+#PBS -l walltime=10:00:00
+#PBS -l mem=4gb
+#PBS -q gpu
+#PBS -o /scratch/ualclsd0197/output_dir/game_of_life_output.txt
+#PBS -e /scratch/ualclsd0197/output_dir/game_of_life_error.txt
+
+cd $PBS_O_WORKDIR
 
 module load cuda
-nvidia-smi
+nvcc -o gameoflife gameoflife.cu
+
+./gameoflife 10000 10000
+
+
+
