@@ -156,11 +156,6 @@
 //     return 0;
 // }
 
-
-
-
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda.h>
@@ -255,28 +250,32 @@ void initialize_life(int *life, int n)
     }
 }
 
-void writeFinalBoardToFile(const int *board, int boardSize, int iterations, int numProcesses, const string &outputDir)
+void writeFinalBoardToFile(const int *board, int n, int iterations)
 {
-    string fileName = outputDir + "/hw5_GPU_" + to_string(boardSize) + "x" + to_string(boardSize) + "_" +
-                      to_string(iterations) + "_" + to_string(numProcesses) + "_procs_testcase.txt";
+    // generate the filename dynamically
+    string fileName = "hw5_GPU_" + to_string(n) + "x" + to_string(n) + "_board_" + to_string(iterations) + "_iterations_testcase.txt";
 
+    // create and open the output file
     ofstream outFile(fileName);
-    if (!outFile.is_open())
+
+    if (!outFile)
     {
-        printf("Error opening file %s for writing.\n", fileName.c_str());
+        printf("Error creating output file: %s\n", fileName.c_str());
         return;
     }
 
-    for (int i = 0; i < boardSize; ++i)
-    {
-        for (int j = 0; j < boardSize; ++j)
+    // write the board contents to the file
+    for (int i = 1; i <= n; ++i)
+    { // skip ghost rows
+        for (int j = 1; j <= n; ++j)
         {
-            outFile << (board[i * (boardSize + 2) + j + 1] ? '*' : '.') << " ";
+            outFile << (board[i * (n + 2) + j] ? '*' : '.') << " ";
         }
         outFile << endl;
     }
-    outFile.close();
 
+    // close the file
+    outFile.close();
     printf("Final board written to %s\n", fileName.c_str());
 }
 
@@ -326,11 +325,12 @@ int main(int argc, char **argv)
 
     cudaMemcpy(h_life, d_life, (n + 2) * (n + 2) * sizeof(int), cudaMemcpyDeviceToHost);
 
+    writeFinalBoardToFile(h_life, n, iterations);
+
     printf("Time taken for %d iterations: %f seconds\n", iterations, end - start);
 
-    writeFinalBoardToFile(h_life, n, iterations, 1, outputDir);
-
     free(h_life);
+
     cudaFree(d_life);
     cudaFree(d_temp);
     cudaFree(d_flag);
