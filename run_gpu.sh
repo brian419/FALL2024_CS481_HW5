@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N game_of_life_mpi_job
-#PBS -l nodes=1:ppn=1:gpus=1:gpu_type
+#PBS -l nodes=1:ppn=1
 #PBS -l walltime=10:00:00
 #PBS -l mem=4gb
 #PBS -q class
