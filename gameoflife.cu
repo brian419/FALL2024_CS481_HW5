@@ -257,10 +257,8 @@ void initialize_life(int *life, int n)
 
 void writeFinalBoardToFile(const int *board, int n, int iterations)
 {
-    // generate the filename dynamically
     string fileName = "hw5_GPU_" + to_string(n) + "x" + to_string(n) + "_board_" + to_string(iterations) + "_iterations_testcase.txt";
 
-    // create and open the output file
     ofstream outFile(fileName);
 
     if (!outFile)
@@ -269,9 +267,8 @@ void writeFinalBoardToFile(const int *board, int n, int iterations)
         return;
     }
 
-    // write the board contents to the file
     for (int i = 1; i <= n; ++i)
-    { // skip ghost rows
+    { 
         for (int j = 1; j <= n; ++j)
         {
             outFile << (board[i * (n + 2) + j] ? '*' : '.') << " ";
@@ -279,7 +276,6 @@ void writeFinalBoardToFile(const int *board, int n, int iterations)
         outFile << endl;
     }
 
-    // close the file
     outFile.close();
     printf("Final board written to %s\n", fileName.c_str());
 }
@@ -330,7 +326,7 @@ int main(int argc, char **argv)
 
     cudaMemcpy(h_life, d_life, (n + 2) * (n + 2) * sizeof(int), cudaMemcpyDeviceToHost);
 
-    writeFinalBoardToFile(h_life, n, iterations);
+    writeFinalBoardToFile(h_life, n, iterations, outputDir);
 
     printf("Time taken for %d iterations: %f seconds\n", iterations, end - start);
 
