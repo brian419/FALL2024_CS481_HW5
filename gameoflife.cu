@@ -255,9 +255,16 @@ void initialize_life(int *life, int n)
     }
 }
 
-void writeFinalBoardToFile(const int *board, int n, int iterations)
+void writeFinalBoardToFile(const int *board, int n, int iterations, const string &outputDir)
 {
-    string fileName = "hw5_GPU_" + to_string(n) + "x" + to_string(n) + "_board_" + to_string(iterations) + "_iterations_testcase.txt";
+    string correctedOutputDir = outputDir;
+    if (outputDir.back() != '/')
+    {
+        correctedOutputDir += "/";
+    }
+
+    string fileName = correctedOutputDir + "hw5_GPU_" + to_string(n) + "x" + to_string(n) +
+                      "_board_" + to_string(iterations) + "_iterations_testcase.txt";
 
     ofstream outFile(fileName);
 
@@ -279,6 +286,7 @@ void writeFinalBoardToFile(const int *board, int n, int iterations)
     outFile.close();
     printf("Final board written to %s\n", fileName.c_str());
 }
+
 
 int main(int argc, char **argv)
 {
