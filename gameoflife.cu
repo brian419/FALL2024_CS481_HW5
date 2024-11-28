@@ -398,14 +398,50 @@ void initializeBoard(int *board, int boardSize) {
     }
 }
 
+// final board to file
+void writeFinalBoardToFile(const int *board, int n, int iterations, const string &outputDir)
+{
+    string correctedOutputDir = outputDir;
+    if (outputDir.back() != '/')
+    {
+        correctedOutputDir += "/";
+    }
+
+    string fileName = correctedOutputDir + "hw5_GPU_" + to_string(n) + "x" + to_string(n) +
+                      "_board_" + to_string(iterations) + "_iterations_testcase.txt";
+
+    ofstream outFile(fileName);
+
+    if (!outFile)
+    {
+        printf("Error creating output file: %s\n", fileName.c_str());
+        return;
+    }
+
+    for (int i = 0; i < n; ++i)
+    { 
+        for (int j = 0; j < n; ++j)
+        {
+            outFile << (board[i * n + j] ? '*' : '.') << " ";
+        }
+        outFile << endl;
+    }
+
+    outFile.close();
+    printf("Final board written to %s\n", fileName.c_str());
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 3) {
         cout << "Usage: " << argv[0] << " <board size> <generations>" << endl;
         return 1;
     }
 
+
+
     int boardSize = stoi(argv[1]);
     int generations = stoi(argv[2]);
+    string outputDir = argv[3];
 
     size_t size = boardSize * boardSize * sizeof(int);
     int *h_current = new int[boardSize * boardSize];
@@ -432,6 +468,9 @@ int main(int argc, char *argv[]) {
 
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end - start);
+
+
+    writeFinalBoardToFile(h_next, boardSize, generations, outputDir);
 
     CHECK_CUDA_ERROR(cudaMemcpy(h_next, d_current, size, cudaMemcpyDeviceToHost));
     cout << "Simulation completed in " << duration.count() << " ms." << endl;
