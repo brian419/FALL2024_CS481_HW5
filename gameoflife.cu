@@ -432,12 +432,10 @@ void writeFinalBoardToFile(const int *board, int n, int iterations, const string
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        cout << "Usage: " << argv[0] << " <board size> <generations>" << endl;
+    if (argc != 4) { 
+        cout << "Usage: " << argv[0] << " <board size> <generations> <output directory>" << endl;
         return 1;
     }
-
-
 
     int boardSize = stoi(argv[1]);
     int generations = stoi(argv[2]);
@@ -469,10 +467,10 @@ int main(int argc, char *argv[]) {
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(end - start);
 
+    CHECK_CUDA_ERROR(cudaMemcpy(h_next, d_current, size, cudaMemcpyDeviceToHost));
 
     writeFinalBoardToFile(h_next, boardSize, generations, outputDir);
 
-    CHECK_CUDA_ERROR(cudaMemcpy(h_next, d_current, size, cudaMemcpyDeviceToHost));
     cout << "Simulation completed in " << duration.count() << " ms." << endl;
 
     cudaFree(d_current);
