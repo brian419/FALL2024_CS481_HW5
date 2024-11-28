@@ -409,7 +409,7 @@ void writeFinalBoardToFile(const int *board, int n, int iterations, const string
     }
 
     string fileName = correctedOutputDir + "hw5_GPU_" + to_string(n) + "x" + to_string(n) +
-                      "_board_" + to_string(iterations) + "_iterations_testcaseV3.txt";
+                      "_board_" + to_string(iterations) + "_iterations_V3code_testcase.txt";
 
     ofstream outFile(fileName);
 
