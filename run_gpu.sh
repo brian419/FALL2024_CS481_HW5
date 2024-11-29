@@ -9,8 +9,8 @@
 cd $PBS_O_WORKDIR
 
 module load cuda
-# nvcc -o gameoflife gameoflife.cu
-# ./gameoflife 10000 5000 /scratch/ualclsd0197/output_dir
+nvcc -o gameoflife gameoflife.cu
+./gameoflife 5000 5000 /scratch/ualclsd0197/output_dir
 
-nvcc -o gameoflifeoptimized gameoflifeoptimized.cu
-./gameoflifeoptimized 5000 5000 /scratch/ualclsd0197/output_dir
+# nvcc -o gameoflifeoptimized gameoflifeoptimized.cu
+# ./gameoflifeoptimized 5000 5000 /scratch/ualclsd0197/output_dir
