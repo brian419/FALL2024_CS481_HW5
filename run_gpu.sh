@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N game_of_life_gpu_job
-#PBS -l select=1:ngpus=1:ncpus=1:mpiprocs=1:mem=4gb
+#PBS -l select=1:ngpus=1:ncpus=1:mpiprocs=1:mem=8gb
 #PBS -l walltime=08:00:00
 #PBS -q classgpu
 #PBS -o /scratch/ualclsd0197/gameoflife_output.txt  
