@@ -1,4 +1,4 @@
-// v3
+// v3++ code ; optimized 
 #include <cuda_runtime.h>
 #include <iostream>
 #include <cstdlib>
@@ -39,7 +39,6 @@ __global__ void gameOfLifeKernelShared(int *current, int *next, int boardSize)
     }
     __syncthreads();
 
-    // counts the neighbors in shared memory
     int aliveNeighbors = 0;
     for (int i = -1; i <= 1; ++i)
     {
@@ -51,13 +50,12 @@ __global__ void gameOfLifeKernelShared(int *current, int *next, int boardSize)
         }
     }
 
-    // updates cell state
     if (row < boardSize && col < boardSize)
     {
         int index = row * boardSize + col;
-        next[index] = (sharedMem[localIdx] == 1) ? (aliveNeighbors < 2 || aliveNeighbors > 3 ? 0 : 1) : (aliveNeighbors == 3 ? 1 : 0);
+        next[index] = (sharedMem[localIdx] == 1) ? (aliveNeighbors < 2 || aliveNeighbors > 3 ? 0 : 1)
+                                                 : (aliveNeighbors == 3 ? 1 : 0);
     }
-}
 }
 
 void initializeBoard(int *board, int boardSize)
@@ -69,7 +67,6 @@ void initializeBoard(int *board, int boardSize)
     }
 }
 
-// final board to file
 void writeFinalBoardToFile(const int *board, int n, int iterations, const string &outputDir)
 {
     string correctedOutputDir = outputDir;
@@ -79,13 +76,13 @@ void writeFinalBoardToFile(const int *board, int n, int iterations, const string
     }
 
     string fileName = correctedOutputDir + "hw5_GPU_" + to_string(n) + "x" + to_string(n) +
-                      "_board_" + to_string(iterations) + "_iterations_V3code_Optimized_testcase.txt";
+                      "_board_" + to_string(iterations) + "_iterations_Optimized.txt";
 
     ofstream outFile(fileName);
 
     if (!outFile)
     {
-        printf("Error creating output file: %s\n", fileName.c_str());
+        cerr << "Error creating output file: " << fileName << endl;
         return;
     }
 
@@ -99,14 +96,14 @@ void writeFinalBoardToFile(const int *board, int n, int iterations, const string
     }
 
     outFile.close();
-    printf("Final board written to %s\n", fileName.c_str());
+    cout << "Final board written to " << fileName << endl;
 }
 
 int main(int argc, char *argv[])
 {
     if (argc != 4)
     {
-        cout << "Usage: " << argv[0] << " <board size> <generations> <output directory>" << endl;
+        cerr << "Usage: " << argv[0] << " <board size> <generations> <output directory>" << endl;
         return 1;
     }
 
@@ -129,19 +126,21 @@ int main(int argc, char *argv[])
     dim3 blocksPerGrid((boardSize + threadsPerBlock.x - 1) / threadsPerBlock.x,
                        (boardSize + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
-    auto start = high_resolution_clock::now();
+    auto start = chrono::steady_clock::now();
 
     for (int gen = 0; gen < generations; ++gen)
     {
-        // gameOfLifeKernel<<<blocksPerGrid, threadsPerBlock>>>(d_current, d_next, boardSize);
-        gameOfLifeKernelShared<<<blocksPerGrid, threadsPerBlock, (threadsPerBlock.x + 2) * (threadsPerBlock.y + 2) * sizeof(int)>>>(d_current, d_next, boardSize);
-
+        gameOfLifeKernelShared<<<blocksPerGrid, threadsPerBlock, 
+            (threadsPerBlock.x + 2) * (threadsPerBlock.y + 2) * sizeof(int)>>>(d_current, d_next, boardSize);
         CHECK_CUDA_ERROR(cudaGetLastError());
-        CHECK_CUDA_ERROR(cudaMemcpy(d_current, d_next, size, cudaMemcpyDeviceToDevice));
+
+        int *temp = d_current;
+        d_current = d_next;
+        d_next = temp;
     }
 
-    auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end - start);
+    auto end = chrono::steady_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
 
     CHECK_CUDA_ERROR(cudaMemcpy(h_next, d_current, size, cudaMemcpyDeviceToHost));
 
