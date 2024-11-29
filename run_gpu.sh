@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N game_of_life_gpu_job
-#PBS -l select=1:ngpus=1:ncpus=1:mpiprocs=1:mem=8gb
+#PBS -l select=1:ngpus=1:ncpus=1:mpiprocs=1:mem=7gb
 #PBS -l walltime=08:00:00
 #PBS -q classgpu
 #PBS -o /scratch/ualclsd0197/gameoflife_output.txt  
@@ -13,4 +13,4 @@ module load cuda
 # ./gameoflife 15000 15000 /scratch/ualclsd0197/output_dir
 
 nvcc -o gameoflifeoptimized gameoflifeoptimized.cu
-./gameoflifeoptimized 30000 15000 /scratch/ualclsd0197/output_dir
+./gameoflifeoptimized 25000 10000 /scratch/ualclsd0197/output_dir
