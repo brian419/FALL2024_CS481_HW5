@@ -12,34 +12,56 @@ using namespace std::chrono;
             exit(1); \
         } \
     }
-__global__ void gameOfLifeKernel(const int *__restrict__ current, int *next, int boardSize) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-    if (row < boardSize && col < boardSize) {
+__global__ void gameOfLifeInnerKernel(const int* current, int* next, int boardSize) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    int col = blockIdx.x * blockDim.x + threadIdx.x + 1;
+    if (row < boardSize -1 && col < boardSize -1) {
         int index = row * boardSize + col;
-        int up = row - 1;
-        int down = row + 1;
-        int left = col - 1;
-        int right = col + 1;
+        int aliveNeighbors =
+            current[(row - 1) * boardSize + (col - 1)] +
+            current[(row - 1) * boardSize + col] +
+            current[(row - 1) * boardSize + (col + 1)] +
+            current[row * boardSize + (col - 1)] +
+            current[row * boardSize + (col + 1)] +
+            current[(row + 1) * boardSize + (col - 1)] +
+            current[(row + 1) * boardSize + col] +
+            current[(row + 1) * boardSize + (col + 1)];
+        int cellState = current[index];
+        next[index] = (cellState == 1) ? ((aliveNeighbors < 2 || aliveNeighbors > 3) ? 0 : 1) : (aliveNeighbors == 3 ? 1 : 0);
+    }
+}
+__global__ void gameOfLifeBoundaryKernel(const int* current, int* next, int boardSize) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int totalBoundaryCells = boardSize * 4 - 4;
+    if (tid < totalBoundaryCells) {
+        int row, col;
+        if (tid < boardSize) {
+            row = 0;
+            col = tid;
+        } else if (tid < 2 * boardSize - 1) {
+            row = boardSize -1;
+            col = tid - boardSize;
+        } else if (tid < 2 * boardSize - 1 + boardSize -2) {
+            row = tid - (2 * boardSize -1) + 1;
+            col = 0;
+        } else {
+            row = tid - (2 * boardSize -1 + boardSize -2) + 1;
+            col = boardSize -1;
+        }
         int aliveNeighbors = 0;
-        if (up >= 0 && left >= 0)
-            aliveNeighbors += __ldg(&current[up * boardSize + left]);
-        if (up >= 0)
-            aliveNeighbors += __ldg(&current[up * boardSize + col]);
-        if (up >= 0 && right < boardSize)
-            aliveNeighbors += __ldg(&current[up * boardSize + right]);
-        if (left >= 0)
-            aliveNeighbors += __ldg(&current[row * boardSize + left]);
-        if (right < boardSize)
-            aliveNeighbors += __ldg(&current[row * boardSize + right]);
-        if (down < boardSize && left >= 0)
-            aliveNeighbors += __ldg(&current[down * boardSize + left]);
-        if (down < boardSize)
-            aliveNeighbors += __ldg(&current[down * boardSize + col]);
-        if (down < boardSize && right < boardSize)
-            aliveNeighbors += __ldg(&current[down * boardSize + right]);
-        int cellState = __ldg(&current[index]);
-        next[index] = (cellState == 1) ? (aliveNeighbors < 2 || aliveNeighbors > 3 ? 0 : 1) : (aliveNeighbors == 3 ? 1 : 0);
+        for (int i = -1; i <=1; ++i) {
+            for (int j = -1; j <=1; ++j) {
+                if (i == 0 && j == 0) continue;
+                int newRow = row + i;
+                int newCol = col + j;
+                if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize) {
+                    aliveNeighbors += current[newRow * boardSize + newCol];
+                }
+            }
+        }
+        int index = row * boardSize + col;
+        int cellState = current[index];
+        next[index] = (cellState == 1) ? ((aliveNeighbors < 2 || aliveNeighbors > 3) ? 0 : 1) : (aliveNeighbors == 3 ? 1 : 0);
     }
 }
 void initializeBoard(int *board, int boardSize) {
@@ -56,7 +78,7 @@ void writeFinalBoardToFile(const int *board, int n, int iterations, const string
         correctedOutputDir += "/";
     }
     string fileName = correctedOutputDir + "hw5_GPU_" + to_string(n) + "x" + to_string(n) +
-                      "_board_" + to_string(iterations) + "_iterations_V3code_Optimized_testcase.txt";
+                    "_board_" + to_string(iterations) + "_iterations_V3code_OptimizedV2_testcase.txt";
     ofstream outFile(fileName);
     if (!outFile)
     {
@@ -90,12 +112,17 @@ int main(int argc, char *argv[]) {
     CHECK_CUDA_ERROR(cudaMalloc(&d_current, size));
     CHECK_CUDA_ERROR(cudaMalloc(&d_next, size));
     CHECK_CUDA_ERROR(cudaMemcpy(d_current, h_current, size, cudaMemcpyHostToDevice));
+    int innerBoardSize = boardSize - 2;
     dim3 threadsPerBlock(16, 16);
-    dim3 blocksPerGrid((boardSize + threadsPerBlock.x - 1) / threadsPerBlock.x,
-                       (boardSize + threadsPerBlock.y - 1) / threadsPerBlock.y);
+    dim3 blocksPerGridInner((innerBoardSize + threadsPerBlock.x - 1) / threadsPerBlock.x,
+                            (innerBoardSize + threadsPerBlock.y - 1) / threadsPerBlock.y);
+    int totalBoundaryCells = boardSize * 4 - 4;
+    int threadsPerBlockBoundary = 256;
+    int blocksPerGridBoundary = (totalBoundaryCells + threadsPerBlockBoundary -1)/threadsPerBlockBoundary;
     auto start = high_resolution_clock::now();
     for (int gen = 0; gen < generations; ++gen) {
-        gameOfLifeKernel<<<blocksPerGrid, threadsPerBlock>>>(d_current, d_next, boardSize);
+        gameOfLifeInnerKernel<<<blocksPerGridInner, threadsPerBlock>>>(d_current, d_next, boardSize);
+        gameOfLifeBoundaryKernel<<<blocksPerGridBoundary, threadsPerBlockBoundary>>>(d_current, d_next, boardSize);
         CHECK_CUDA_ERROR(cudaGetLastError());
         CHECK_CUDA_ERROR(cudaMemcpy(d_current, d_next, size, cudaMemcpyDeviceToDevice));
     }
