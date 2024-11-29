@@ -8,11 +8,13 @@
 using namespace std;
 using namespace std::chrono;
 
-#define CHECK_CUDA_ERROR(err)                                      
-    if (err != cudaSuccess)                                        
-    {                                                              
-        cerr << "CUDA Error: " << cudaGetErrorString(err) << endl; 
-        exit(1);                                                   
+#define CHECK_CUDA_ERROR(err)                                          \
+    {                                                                  \
+        if (err != cudaSuccess)                                        \
+        {                                                              \
+            cerr << "CUDA Error: " << cudaGetErrorString(err) << endl; \
+            exit(1);                                                   \
+        }                                                              \
     }
 
 __global__ void gameOfLifeKernelShared(int *current, int *next, int boardSize)
@@ -25,38 +27,37 @@ __global__ void gameOfLifeKernelShared(int *current, int *next, int boardSize)
 
     if (row < boardSize && col < boardSize)
     {
-        // loads data into shared memory, including the halo region
         sharedMem[localIdx] = current[row * boardSize + col];
-        if (tx == 0 && col > 0) 
+        if (tx == 0 && col > 0)
             sharedMem[localIdx - 1] = current[row * boardSize + col - 1];
-        if (tx == blockDim.x - 1 && col < boardSize - 1) 
+        if (tx == blockDim.x - 1 && col < boardSize - 1)
             sharedMem[localIdx + 1] = current[row * boardSize + col + 1];
-        if (ty == 0 && row > 0) 
+        if (ty == 0 && row > 0)
             sharedMem[localIdx - (blockDim.x + 2)] = current[(row - 1) * boardSize + col];
-        if (ty == blockDim.y - 1 && row < boardSize - 1) 
+        if (ty == blockDim.y - 1 && row < boardSize - 1)
             sharedMem[localIdx + (blockDim.x + 2)] = current[(row + 1) * boardSize + col];
+    }
+    __syncthreads();
 
-        __syncthreads(); 
-
-        // counts the neighbors in shared memory
-        int aliveNeighbors = 0;
-        for (int i = -1; i <= 1; ++i)
+    // counts the neighbors in shared memory
+    int aliveNeighbors = 0;
+    for (int i = -1; i <= 1; ++i)
+    {
+        for (int j = -1; j <= 1; ++j)
         {
-            for (int j = -1; j <= 1; ++j)
-            {
-                if (i == 0 && j == 0)
-                    continue;
-                aliveNeighbors += sharedMem[localIdx + i * (blockDim.x + 2) + j];
-            }
-        }
-
-        // updates cell state
-        if (row < boardSize && col < boardSize)
-        {
-            int index = row * boardSize + col;
-            next[index] = (sharedMem[localIdx] == 1) ? (aliveNeighbors < 2 || aliveNeighbors > 3 ? 0 : 1) : (aliveNeighbors == 3 ? 1 : 0);
+            if (i == 0 && j == 0)
+                continue;
+            aliveNeighbors += sharedMem[localIdx + i * (blockDim.x + 2) + j];
         }
     }
+
+    // updates cell state
+    if (row < boardSize && col < boardSize)
+    {
+        int index = row * boardSize + col;
+        next[index] = (sharedMem[localIdx] == 1) ? (aliveNeighbors < 2 || aliveNeighbors > 3 ? 0 : 1) : (aliveNeighbors == 3 ? 1 : 0);
+    }
+}
 }
 
 void initializeBoard(int *board, int boardSize)
@@ -134,6 +135,7 @@ int main(int argc, char *argv[])
     {
         // gameOfLifeKernel<<<blocksPerGrid, threadsPerBlock>>>(d_current, d_next, boardSize);
         gameOfLifeKernelShared<<<blocksPerGrid, threadsPerBlock, (threadsPerBlock.x + 2) * (threadsPerBlock.y + 2) * sizeof(int)>>>(d_current, d_next, boardSize);
+
         CHECK_CUDA_ERROR(cudaGetLastError());
         CHECK_CUDA_ERROR(cudaMemcpy(d_current, d_next, size, cudaMemcpyDeviceToDevice));
     }

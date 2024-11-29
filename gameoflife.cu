@@ -8,10 +8,12 @@
 using namespace std;
 using namespace std::chrono;
 
-#define CHECK_CUDA_ERROR(err) 
-    if (err != cudaSuccess) { 
-        cerr << "CUDA Error: " << cudaGetErrorString(err) << endl; 
-        exit(1); 
+#define CHECK_CUDA_ERROR(err) \
+    { \
+        if (err != cudaSuccess) { \
+            cerr << "CUDA Error: " << cudaGetErrorString(err) << endl; \
+            exit(1); \
+        } \
     }
 
 __global__ void gameOfLifeKernel(int *current, int *next, int boardSize) {
