@@ -1,4 +1,3 @@
-// v3
 #include <cuda_runtime.h>
 #include <iostream>
 #include <cstdlib>
@@ -16,35 +15,50 @@ using namespace std::chrono;
         } \
     }
 
-__global__ void gameOfLifeKernel(int *current, int *next, int boardSize) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+#define TILE_SIZE 2
 
-    if (row < boardSize && col < boardSize) {
-        int aliveNeighbors = 0;
-        for (int i = -1; i <= 1; ++i) {
-            for (int j = -1; j <= 1; ++j) {
-                if (i == 0 && j == 0) continue;
-                int newRow = row + i;
-                int newCol = col + j;
-                if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize) {
-                    aliveNeighbors += current[newRow * boardSize + newCol];
+__global__ void gameOfLifeKernel(int *current, int *next, int boardSize) {
+
+    int baseRow = (blockIdx.y * blockDim.y + threadIdx.y) * TILE_SIZE;
+    int baseCol = (blockIdx.x * blockDim.x + threadIdx.x) * TILE_SIZE;
+
+    for (int ty = 0; ty < TILE_SIZE; ++ty) {
+        int row = baseRow + ty;
+        if (row >= boardSize) continue;
+        for (int tx = 0; tx < TILE_SIZE; ++tx) {
+            int col = baseCol + tx;
+            if (col >= boardSize) continue;
+
+            int aliveNeighbors = 0;
+            for (int i = -1; i <= 1; ++i) {
+                int neighborRow = row + i;
+                if (neighborRow < 0 || neighborRow >= boardSize) continue;
+                for (int j = -1; j <= 1; ++j) {
+                    int neighborCol = col + j;
+                    if (neighborCol < 0 || neighborCol >= boardSize) continue;
+                    if (i == 0 && j == 0) continue;
+                    aliveNeighbors += current[neighborRow * boardSize + neighborCol];
                 }
             }
+
+            int index = row * boardSize + col;
+            int cell = current[index];
+            if (cell == 1) {
+                next[index] = (aliveNeighbors < 2 || aliveNeighbors > 3) ? 0 : 1;
+            } else {
+                next[index] = (aliveNeighbors == 3) ? 1 : 0;
+            }
         }
-        int index = row * boardSize + col;
-        next[index] = (current[index] == 1) ? (aliveNeighbors < 2 || aliveNeighbors > 3 ? 0 : 1) : (aliveNeighbors == 3 ? 1 : 0);
     }
 }
 
 void initializeBoard(int *board, int boardSize) {
-    srand(12345); 
+    srand(12345);
     for (int i = 0; i < boardSize * boardSize; ++i) {
         board[i] = rand() % 2;
     }
 }
 
-// final board to file
 void writeFinalBoardToFile(const int *board, int n, int iterations, const string &outputDir)
 {
     string correctedOutputDir = outputDir;
@@ -98,9 +112,9 @@ int main(int argc, char *argv[]) {
     CHECK_CUDA_ERROR(cudaMalloc(&d_next, size));
     CHECK_CUDA_ERROR(cudaMemcpy(d_current, h_current, size, cudaMemcpyHostToDevice));
 
-    dim3 threadsPerBlock(16, 16);
-    dim3 blocksPerGrid((boardSize + threadsPerBlock.x - 1) / threadsPerBlock.x,
-                       (boardSize + threadsPerBlock.y - 1) / threadsPerBlock.y);
+    dim3 threadsPerBlock(16,16);
+    dim3 blocksPerGrid((boardSize + TILE_SIZE * threadsPerBlock.x - 1) / (TILE_SIZE * threadsPerBlock.x),
+                       (boardSize + TILE_SIZE * threadsPerBlock.y - 1) / (TILE_SIZE * threadsPerBlock.y));
 
     auto start = high_resolution_clock::now();
 
