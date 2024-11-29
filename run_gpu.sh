@@ -13,4 +13,4 @@ module load cuda
 # ./gameoflife 15000 15000 /scratch/ualclsd0197/output_dir
 
 nvcc -o gameoflifeoptimized gameoflifeoptimized.cu
-./gameoflifeoptimized 50000 50000 /scratch/ualclsd0197/output_dir
+./gameoflifeoptimized 30000 30000 /scratch/ualclsd0197/output_dir
