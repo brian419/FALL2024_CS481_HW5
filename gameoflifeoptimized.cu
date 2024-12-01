@@ -1,3 +1,16 @@
+/**
+ * Name: Jeongbin Son
+ * Email: json10@crimson.ua.edu
+ * Homework #: 5, Optimized
+ * @brief This program is for CS 481 - High Performance Computing; HW 5
+ * @date 2024, Fall Semester
+ * Instructions to compile the program:
+ * module load cuda
+ * nvcc -o gameoflifeoptimized gameoflifeoptimized.cu
+ * Instructions to run the program:
+ * ./gameoflifeoptimized 5000 5000 /scratch/ualclsd0197/output_dir
+ */
+
 #include <cuda_runtime.h>
 #include <iostream>
 #include <cstdlib>
@@ -52,6 +65,7 @@ __global__ void gameOfLifeKernel(int *current, int *next, int boardSize) {
     }
 }
 
+// initializing the board but with same random seed as other programs
 void initializeBoard(int *board, int boardSize) {
     srand(12345);
     for (int i = 0; i < boardSize * boardSize; ++i) {
@@ -59,6 +73,7 @@ void initializeBoard(int *board, int boardSize) {
     }
 }
 
+// final board to file
 void writeFinalBoardToFile(const int *board, int n, int iterations, const string &outputDir)
 {
     string correctedOutputDir = outputDir;

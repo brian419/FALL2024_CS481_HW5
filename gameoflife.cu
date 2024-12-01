@@ -1,4 +1,16 @@
-// v3
+/**
+ * Name: Jeongbin Son
+ * Email: json10@crimson.ua.edu
+ * Homework #: 5, Pre-optimization
+ * @brief This program is for CS 481 - High Performance Computing; HW 5
+ * @date 2024, Fall Semester
+ * Instructions to compile the program:
+ * module load cuda
+ * nvcc -o gameoflife gameoflife.cu
+ * Instructions to run the program:
+ * ./gameoflife 5000 5000 /scratch/ualclsd0197/output_dir
+ */
+
 #include <cuda_runtime.h>
 #include <iostream>
 #include <cstdlib>
@@ -8,6 +20,7 @@
 using namespace std;
 using namespace std::chrono;
 
+// just checking for CUDA errors
 #define CHECK_CUDA_ERROR(err) \
     { \
         if (err != cudaSuccess) { \
@@ -16,10 +29,14 @@ using namespace std::chrono;
         } \
     }
 
+// my main kernel function
 __global__ void gameOfLifeKernel(int *current, int *next, int boardSize) {
+    
+    // initializing row and col to use
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
 
+    // checking if the row and col are within the board size
     if (row < boardSize && col < boardSize) {
         int aliveNeighbors = 0;
         for (int i = -1; i <= 1; ++i) {
@@ -27,6 +44,7 @@ __global__ void gameOfLifeKernel(int *current, int *next, int boardSize) {
                 if (i == 0 && j == 0) continue;
                 int newRow = row + i;
                 int newCol = col + j;
+                // checking if the new row and col are within the board size
                 if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize) {
                     aliveNeighbors += current[newRow * boardSize + newCol];
                 }
@@ -37,6 +55,7 @@ __global__ void gameOfLifeKernel(int *current, int *next, int boardSize) {
     }
 }
 
+// initializing the board but with same random seed as other programs
 void initializeBoard(int *board, int boardSize) {
     srand(12345); 
     for (int i = 0; i < boardSize * boardSize; ++i) {
